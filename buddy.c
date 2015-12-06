@@ -165,10 +165,10 @@ void *balloc(int objectsize)
 		}
 		if( flag == 1){
 			index2--;
-			while(index2 > index){
+			while(index2 > index){            // return back to the list of the desired size
 				p = list[index2];
 				while(p  != NULL){
-					if(p->status == EMPTY){                     // divide the node int two nodes
+					if(p->status == EMPTY){                     
 						n1 = (struct node *)getNode();         
 						n2= (struct node *)getNode();
 						n1->size = p->size -1 ;
@@ -193,7 +193,7 @@ void *balloc(int objectsize)
 				index2--;
 			}
 			p = list[index2];	// index now equal index 2 ;
-			while(p  != NULL){                                /*handle the case when there is already free divided size with the desired one*/
+			while(p  != NULL){                                /*now we have free divided size with the desired one*/
 				if(p->status == EMPTY){
 					p->status = FULL;
 					printf("block with size : %d is alocated after division \n",(int)pow(2,size));
@@ -227,12 +227,13 @@ void bfree(void *objectptr)
 			break ;
 		}
 	}
-	if(flag == 1){
+	if(flag == 1){ // if we find the desired object we will search for another free with same size (code not comlete)
 		p = list[i];
-		while(p  != NULL){
-			if(p->status == EMPTY && abs(p->status )){
-				flag = 1 ;
-				break ;
+		while(p  != NULL){ 
+			if(p->status == EMPTY &&  )){
+			 /*here some cases may appear that we cannt handle it in merege (see piaza)
+			 * so in our implementation we have to define free_left & free_right & empty_left & empty_right 
+			 */	
 			}
 			p = p->next ;
 		}
