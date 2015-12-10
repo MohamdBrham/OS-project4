@@ -37,7 +37,6 @@ void freeNode(struct node * previous, struct node * p){
 		list[0] = p ;
 	}	
 }
-
 struct node* getNode(){
 	struct node * p ;
 	p = list[0];
@@ -45,9 +44,7 @@ struct node* getNode(){
 	p->next = NULL ;	 
 	return p ;
 }
-
-int binit(void *chunkpointer, int chunksize)
-{	
+int binit(void *chunkpointer, int chunksize){	
 	int i ; 
 	struct node* p;
 	char size = (char)roundSize(chunksize) ;         			/* here i deal with the size just by the power*/
@@ -57,9 +54,6 @@ int binit(void *chunkpointer, int chunksize)
 	size  = size + 10 ;	 
 	s = size ;                           			 /* add 1024 to the size becaouse its already entered in KB*/
 	base = (long long)chunkpointer;                            			 /* preserve the base pointer to the chunk */
-
-	printf(" start base : %lu\n",(unsigned long)base);
-
 	for(i = 0 ; i < NUM_POINTERS ; i++){            			 /* initialise the main pointers list to null */
 		list[i] = NULL ;	
 	}
@@ -78,42 +72,27 @@ int binit(void *chunkpointer, int chunksize)
 	 
 	//list[size - 7 ]  = (struct node *)getNode();   // the main chunk stay here but we have to devide it
 																										
-                                                                                                         
-	list[size - 8 ]  = (struct node *)getNode();                                                                       
-	list[size - 8 ] ->next = NULL ;
-	list[size - 8 ] ->size = size - 1 ;
-	list[size - 8 ] ->ptr = (unsigned long)base + pow(2 , size - 1) ;
-	list[size - 8 ] ->status = EMPTY_R;
-
-	list[size - 9 ]  = (struct node *)getNode();
-	list[size - 9 ] ->next = NULL ;
-	list[size - 9 ] ->size = size - 2 ;
-	list[size - 9 ] ->ptr = (unsigned long)base + pow(2 , size - 2) ;
-	list[size - 9 ] ->status = EMPTY_R;
-
-	list[size - 10 ]  = (struct node *)getNode();
-	list[size - 10 ] ->next = NULL ;
-	list[size - 10 ] ->size = size - 3 ;
-	list[size - 10 ] ->ptr = (unsigned long)base + pow(2 , size - 3) ;
-	list[size - 10 ] ->status = EMPTY_R;
-
-	p = (struct node *)getNode();	
-	p->size = size - 3 ;
+    for( i = 1 ; i < 5 ; i++ ){
+    	list[size - 7-i ]  = (struct node *)getNode();                                                                       
+		list[size - 7-i ] ->next = NULL ;
+		list[size - 7-i ] ->size = size - i ;
+		list[size - 7-i ] ->ptr = (unsigned long)base + pow(2 , size - i) ;
+		list[size - 7-i ] ->status = EMPTY_R;
+	}
+	 // allocate 3/32 of the main memory for data managment
+	// first allocate 2/32 of the main chunk
+	p = (struct node *)getNode();          
+	p->size = size - 4 ;
 	p->ptr = (unsigned long)base  ;
-	p->status = FULL_L;
+	p->status = FULL_L;                        
 
-	p->next = list[size - 10 ] ; 
-	list[size - 10 ] = p ;
-
+	p->next = list[size - 11 ] ; 
+	list[size - 11 ] = p ;
+	// second allocate 1/32 
+	p = (struct node *)balloc(pow(2,size-5));  
 	
-	/*for( i = size - 7 ; i > size - 7 - 4 ; i--){
-
-	}*/
-
-	return (0);		// if success
-	
+	return (0);		// if success	
 }
-
 void *balloc(int objectsize)
 {
 	struct node *p ,*n1 ,*n2 ,*pre;
@@ -198,9 +177,6 @@ void *balloc(int objectsize)
 		}
 		index2++;
 	}
-
-	printf("balloc called\n");
-
 	return (NULL);		// if not success
 }
 
@@ -235,7 +211,6 @@ void bfree(void *objectptr)
       ** the next time when it have to go up to merge it will enter by k != -1 
       */
 	while( flag == 1 ){
-
 		/* now I want to search for another free node in that list*/
 		//flag = 1 ;
 		pre2 = list[i];
@@ -258,77 +233,44 @@ void bfree(void *objectptr)
 		*/
 		if( flag == 2 ){ // I found empty node in the right
 			/* k here is to know the parent its left or right*/
-			k = (int)((unsigned long)p->ptr - (unsigned long) base ) / (int)pow(2,(p->size) + 1) ;		
-			if( k % 2 == 0){
-				freeNode(pre2 ,q ); // free the right node 
-				q = (struct node *)getNode();	
-				q->size = (p->size) + 1 ;
-				q->ptr  = p->ptr ;   ;
+			k = (int)((unsigned long)p->ptr - (unsigned long) base ) / (int)pow(2,(p->size) + 1) ;	
+			freeNode(pre2 ,q ); // free the right node 
+			q = (struct node *)getNode();	
+			q->size = (p->size) + 1 ;
+			q->ptr  = p->ptr ;
+			if( k % 2 == 0){				
 				q->status = EMPTY_L;
-
-				q->next = list[ i+1 ] ; // add the combined node to upper size	
-				list[ i + 1 ] = q ;
-				i += 1 ;
-				if(count > 0){
-					freeFirst((p->size)-7);
-				}else{
-					freeNode(pre1 ,p );
-				}  
-				pre1 = q ;
-				p = q ;
-
 			}else{ // k %2 == 1 
-				freeNode(pre2 ,q ); // free the right node 
-				q = (struct node *)getNode();	
-				q->size = (p->size) + 1 ;
-				q->ptr  = p->ptr ;   ;
 				q->status = EMPTY_R;
-
-				q->next = list[ i+1 ] ; // add the combined node to upper size	
-				list[ i + 1 ] = q ;
-				i += 1 ;
-				if(count > 0){
-					freeFirst((p->size)-7);
-				}else{
-					freeNode(pre1 ,p );
-				} 
-				pre1 = q ;
-				p = q ;
 			}
+			q->next = list[ i+1 ] ; // add the combined node to upper size	
+			list[ ++i ] = q ;
+			if(count > 0){
+				freeFirst((p->size)-7);
+			}else{
+				freeNode(pre1 ,p );
+			}  
+			pre1 = q ;
+			p = q ;
 		}else if( flag == 3 ){// I found empty node in the left 
-			k = (int)((unsigned long)q->ptr - (unsigned long) base ) / (int)pow(2,(p->size) + 1) ;		
-			if( k % 2 == 0){
-				freeNode(pre1 ,p ); // free the right node 
-				p = (struct node *)getNode();	
-				p->size = (q->size) + 1 ;
-				p->ptr  = q->ptr ;   ;
-				p->status = EMPTY_L;
-				p->next = list[ i+1 ] ; // add the combined node to upper size	
-				list[ i + 1 ] = p;
-				i += 1 ;
-				if(count > 0){
-					freeFirst((q->size)-7);
-				}else{
-					freeNode(pre2 ,q );
-				}				 
-				pre1 = list[ i ] ;			
-
-			}else{ // k %2 == 1 
-				freeNode(pre1 ,p );  // free the right node 
-				p = (struct node *)getNode();	
-				p->size = (q->size) + 1 ;
-				p->ptr  = q->ptr ;   ;
-				p->status = EMPTY_R;
-				p->next = list[ i+1 ] ; // add the combined node to upper size	
-				list[ i + 1 ] = p;
-				i += 1 ;
-				if(count > 0){
-					freeFirst((q->size)-7);
-				}else{
-					freeNode(pre2 ,q );
-				} 
-				pre1 = list[ i  ] ;
+			k = (int)((unsigned long)q->ptr - (unsigned long) base ) / (int)pow(2,(p->size) + 1) ;	
+			freeNode(pre1 ,p ); // free the right node 
+			p = (struct node *)getNode();	
+			p->size = (q->size) + 1 ;
+			p->ptr  = q->ptr ;	
+			if( k % 2 == 0){				
+				p->status = EMPTY_L;					
+			}else{ // k %2 == 1				
+				p->status = EMPTY_R;				
 			}
+			p->next = list[ i+1 ] ; // add the combined node to upper size	
+			list[ ++i ] = p;			
+			if(count > 0){
+				freeFirst((q->size)-7);
+			}else{
+				freeNode(pre2 ,q );
+			}				 
+			pre1 = list[ i ] ;
 		}else if(flag == 1 && k == -1){            // if  its the only free node in that list 
 			if(p->status == FULL_L){
 				p->status = EMPTY_L ;
@@ -342,25 +284,136 @@ void bfree(void *objectptr)
 		count++;
 		flag = 1 ;
 	}
-
 	return;
 }
 
+struct node*  sortList(struct node* l){  // function to sort the given list 
+// stop codition ( at the end of the list)
+if(l == NULL || l->next == NULL)
+    return l;  // the list is sorted.
+/*Now what I want to do is every time put the largest node first and make recursion for the rest of list
+ ** 1- find the largest node 
+ ** 2- switch the largest with the first one ; 
+ ** 3- calling the function again with the sublist
+*/
+//1- find largest node : 
+struct node * curr, *largest,*largestPrev ,*prev,* tmp;
+curr = l;
+largest = l;
+prev = l;
+largestPrev = l;
+while(curr != NULL) { // find the largest in the list(pointed by largest)
+        if((unsigned long)curr->ptr < (unsigned long)largest->ptr) {
+            largestPrev = prev;
+            largest = curr;
+        }
+        prev = curr;
+        curr = curr->next;
+    }
+
+//2- switching firt node and largest node : 
+if(largest != l){
+    largestPrev->next = l;
+    tmp = l->next;
+    l->next = largest->next;
+    largest->next = tmp;
+}
+// now largest is the first node of the list.
+// calling the function again with the sub list :
+largest->next = sortList(largest->next);
+return largest;
+}
+
+struct node*  data(int listNumber , int nodeNumber ){ // function return pointer to the desired node in the desired list
+	struct node *p ;
+	int counter = 0 ;
+	p = list[listNumber];
+		while(p  != NULL){
+			counter++ ;
+			if(counter == nodeNumber){
+				return p ;
+			}
+			p = p->next ;
+		}
+	return NULL ; 	
+}
 void bprint()
 {
-	struct node * p ;
-	int i;
-	for( i = 1 ; i <= s- 8 ; i++){
+	struct node *p ;
+	int i ,k ,j , counters[18] ,numOfItems = 0 ;		
+	struct node  array[18]  ;            // this array is just for printing 	
+
+	// iterate throgh all the lists and sort them
+	for( i = 1 ; i <= s- 8 ; i++){ 
+		list[i] = sortList(list[i]); ; 
+	}
+	// initialize the array
+	for( i = 0 ; i < 18 ; i++){
+		array[i].status = 0;
+		array[i].size   = 0 ;
+		array[i].ptr    = 9223372036854775807 ; // max number can store in 64 bit
+	}
+	/*get one node from every list to the array
+	 ** insert this node in its correct place in order in the array
+	 */
+
+	for( i = 1 ; i < s-7  ; i++){
+		p = (struct node* )data(i , 1); //get the first node from the list		
+		counters[i] = 1 ;
+		if(p != NULL){  // if there exist a node in the list with that number (counters[i])
+			k = 0 ; 
+			numOfItems++ ;			
+			while(k < numOfItems && ((long long)p->ptr) > ((long long)array[k].ptr ))
+			 k++ ;
+			if(k < numOfItems ){
+				for( j = numOfItems ; j >= k  ; j--){ // shift the elements in the array to the right
+					array[j].ptr = array[j-1].ptr ;
+					array[j].size = array[j-1].size ;
+					array[j].status = array[j-1].status ;
+
+				}
+				array[k].ptr = p->ptr ; // insert the node 
+				array[k].size = p->size ;
+				array[k].status = p->status ;
+			}
+		}
+	}	
+	/* Now the array contain node from every list 
+	 ** counters contain the order of the item in his parent list
+	*/
+	while(numOfItems > 0 ){
+
+		printf("out : %2d %2d %lld\n", array[0].size , array[0].status , array[0].ptr); // printing the minimum address in the array
+		counters[array[0].size - 7] = counters[array[0].size - 7] + 1;
+		p  = (struct node* )data((int)array[0].size - 7  , (int)counters[array[0].size - 7] ); // get new node from the same list 		
+		if(p != NULL ){
+			k = 1; 
+			while( k < numOfItems && ((long long)p->ptr) > ((long long)array[k].ptr)){  
+				array[k-1].ptr = array[k].ptr ;        // shift the elements in the array to the left for insertion
+				array[k-1].size = array[k].size ;
+				array[k-1].status = array[k].status ;
+				k++ ;
+			}
+				array[k-1].ptr = p->ptr ;
+				array[k-1].size = p->size ;
+				array[k-1].status = p->status ;			
+		}else{
+			for( j = 0 ; j < numOfItems-1  ; j++){ // shift the elements in the array to the left
+					array[j].ptr = array[j+1].ptr ;
+					array[j].size = array[j+1].size ;
+					array[j].status = array[j+1].status ;
+				}
+			numOfItems--; 
+		}
+
+	}
+	/*for( i = 1 ; i <= s- 8 ; i++){
 		p = list[i];
 		while(p  != NULL){
 			printf("%d %d %lld\n", p->size, p->status, p->ptr);
 			p = p->next ;
 		}		
-	}
-
-	//printf("the base address is %ld\n", base );
-	
-	//printf("bprint called\n");
+	}*/	
 	return;
 }
 
