@@ -11,15 +11,23 @@ struct node
 {
     char size;                       /* size of the pointed chunck */
 	char status;
-    long long  ptr;			/* pointer to the chunk */  
+    int  ptr;			/* pointer to the chunk */  
 	struct node* next ;   
 };
 
 struct node* list[NUM_POINTERS];
 
 
-int roundSize(int size){	
-	return (int)ceil(log(size) / log(2));
+int roundSize(int size){
+	int power = 1 ,count = 0;
+	while(power < size){
+ 	   power = power << 1;
+ 	   count++;
+	}
+	return count ;
+}
+int powOfTwo(int power){
+	return(1 << power);
 }
 void freeFirst(int ind){
 	struct node* p;
@@ -52,45 +60,43 @@ int binit(void *chunkpointer, int chunksize){
 		return -1 ;
 	}
 	size  = size + 10 ;	 
-	s = size ;                           			 /* add 1024 to the size becaouse its already entered in KB*/
+	s = size ;      
+	                     			 /* add 1024 to the size becaouse its already entered in KB*/
 	base = (long long)chunkpointer;                            			 /* preserve the base pointer to the chunk */
 	for(i = 0 ; i < NUM_POINTERS ; i++){            			 /* initialise the main pointers list to null */
 		list[i] = NULL ;	
 	}
-
 	list[0] =  chunkpointer ;         							 /* cast the list[0] to pints to node type*/
 	p = (struct node*) list[0];
 
-	for( i = 0 ; i < pow(2 , size -8 ); i++){            		 /* connect the free nodes after list[0]*/
-		 p->next =(struct node*)( ((unsigned long) p) + sizeof(struct node)) ;
-		 p->size  = i ; 
+	for( i = 0 ; i < powOfTwo(size -8); i++){            		 /* connect the free nodes after list[0]*/
+		 p->next =(struct node*)( ((unsigned long) p) + sizeof(struct node)) ;		  
 		 p = p->next;
 	}
+
 	p = (struct node*)(((unsigned long) p) - sizeof(struct node)) ;
-	p->next= NULL ; 
-	printf(" size %d\n",size );
+	p->next= NULL ; 	
 	 
 	//list[size - 7 ]  = (struct node *)getNode();   // the main chunk stay here but we have to devide it
 																										
     for( i = 1 ; i < 5 ; i++ ){
     	list[size - 7-i ]  = (struct node *)getNode();                                                                       
 		list[size - 7-i ] ->next = NULL ;
-		list[size - 7-i ] ->size = size - i ;
-		list[size - 7-i ] ->ptr = (unsigned long)base + pow(2 , size - i) ;
+		list[size - 7-i ] ->size = size - i ;		
+		list[size - 7-i ] ->ptr =  (int) powOfTwo(size -i) ;
 		list[size - 7-i ] ->status = EMPTY_R;
 	}
-	 // allocate 3/32 of the main memory for data managment
+	 // allocate 1/16 of the main memory for data managment
 	// first allocate 2/32 of the main chunk
 	p = (struct node *)getNode();          
 	p->size = size - 4 ;
-	p->ptr = (unsigned long)base  ;
+	p->ptr = 0  ;
 	p->status = FULL_L;                        
 
 	p->next = list[size - 11 ] ; 
 	list[size - 11 ] = p ;
-	// second allocate 1/32 
-	p = (struct node *)balloc(pow(2,size-5));  
 	
+
 	return (0);		// if success	
 }
 void *balloc(int objectsize)
@@ -102,10 +108,10 @@ void *balloc(int objectsize)
 	while(p  != NULL){                                /*handle the case when there is already free divided size with the desired one*/
 		if(p->status == EMPTY_L){
 			p->status = FULL_L;
-			return (void * )p->ptr; 
+			return (void * )(p->ptr+(long long ) base); 
 		}else if(p->status == EMPTY_R){
 			p->status = FULL_R;
-			return (void * )p->ptr; 
+			return (void * )(p->ptr+(long long ) base); 
 		}
 		p = p->next ;
 	}	
@@ -117,13 +123,13 @@ void *balloc(int objectsize)
 		while(p  != NULL){
 			if(p->status == EMPTY_L || p->status == EMPTY_R  ){                     // divide the node int two nodes
 				n1 = (struct node *)getNode();         
-				n2= (struct node *)getNode();
+				n2 = (struct node *)getNode();
 				n1->size = p->size -1 ;
 				n2->size = p->size -1 ;
 				n1->status = EMPTY_L;
 				n2->status = EMPTY_R ;
 				n1->ptr = p->ptr ;
-				n2->ptr = ((unsigned long)p->ptr) + (int)pow(2, n1->size) ;
+				n2->ptr = p->ptr + powOfTwo(n1->size) ;
 
 				n2->next = list[index2 - 1];
 				n1->next = n2 ;
@@ -149,7 +155,7 @@ void *balloc(int objectsize)
 						n1->status = EMPTY_L;
 						n2->status = EMPTY_R ;
 						n1->ptr = p->ptr ;
-						n2->ptr = ((unsigned long)p->ptr) + (int)pow(2, n1->size) ;
+						n2->ptr = ((int)p->ptr) + (int)powOfTwo(n1->size) ;
 
 						n2->next = list[index2 - 1];
 						n1->next = n2 ;
@@ -167,10 +173,10 @@ void *balloc(int objectsize)
 			while(p  != NULL){                                /*handle the case when there is already free divided size with the desired one*/
 				if(p->status == EMPTY_L){
 					p->status = FULL_L;
-					return (void * )p->ptr; 
+					return (void * )(p->ptr +(long long ) base); 
 				}else if(p->status == EMPTY_R){
 					p->status = FULL_R;
-					return (void * )p->ptr; 
+					return (void * )(p->ptr+(long long ) base); 
 				}
 				p = p->next ;
 			}	
@@ -188,7 +194,7 @@ void bfree(void *objectptr)
 		pre1 =  list[i]; 								             /* search for the desired object in all lists*/
 		p = list[i];
 		while(p  != NULL){
-			if((unsigned long) p->ptr == (unsigned long)objectptr){
+			if((int) p->ptr == ((long long)objectptr) - (long long)base){
 				flag = 1 ;
 				k = -1 ;
 				break ; /*break from while*/
@@ -216,10 +222,10 @@ void bfree(void *objectptr)
 		pre2 = list[i];
 		q = list[i];                           
 		while(q  != NULL){
-			if( q->status == EMPTY_R && (unsigned long)q->ptr == ((unsigned long)p->ptr) + (int)pow(2,p->size)){
+			if( q->status == EMPTY_R && (int)q->ptr == ((int)p->ptr) + (int)powOfTwo(p->size)){
 				flag = 2 ;
 				break ;
-			}else if(q->status == EMPTY_L && (unsigned long)q->ptr == ((unsigned long)p->ptr) - (int)pow(2,p->size)){
+			}else if(q->status == EMPTY_L && (int)q->ptr == ((int)p->ptr) - (int)powOfTwo(p->size)){
 				flag = 3; 
 				break;
 			}
@@ -233,7 +239,7 @@ void bfree(void *objectptr)
 		*/
 		if( flag == 2 ){ // I found empty node in the right
 			/* k here is to know the parent its left or right*/
-			k = (int)((unsigned long)p->ptr - (unsigned long) base ) / (int)pow(2,(p->size) + 1) ;	
+			k =  p->ptr / (powOfTwo(p->size + 1 ) ) ;	
 			freeNode(pre2 ,q ); // free the right node 
 			q = (struct node *)getNode();	
 			q->size = (p->size) + 1 ;
@@ -253,7 +259,7 @@ void bfree(void *objectptr)
 			pre1 = q ;
 			p = q ;
 		}else if( flag == 3 ){// I found empty node in the left 
-			k = (int)((unsigned long)q->ptr - (unsigned long) base ) / (int)pow(2,(p->size) + 1) ;	
+			k = q->ptr  / (powOfTwo(p->size + 1)  )  ;	
 			freeNode(pre1 ,p ); // free the right node 
 			p = (struct node *)getNode();	
 			p->size = (q->size) + 1 ;
@@ -297,13 +303,13 @@ if(l == NULL || l->next == NULL)
  ** 3- calling the function again with the sublist
 */
 //1- find largest node : 
-struct node * curr, *largest,*largestPrev ,*prev,* tmp;
+struct node *curr, *largest,*largestPrev ,*prev,* tmp;
 curr = l;
 largest = l;
 prev = l;
 largestPrev = l;
 while(curr != NULL) { // find the largest in the list(pointed by largest)
-        if((unsigned long)curr->ptr < (unsigned long)largest->ptr) {
+        if(curr->ptr < largest->ptr) {
             largestPrev = prev;
             largest = curr;
         }
@@ -351,8 +357,9 @@ void bprint()
 	for( i = 0 ; i < 18 ; i++){
 		array[i].status = 0;
 		array[i].size   = 0 ;
-		array[i].ptr    = 9223372036854775807 ; // max number can store in 64 bit
-	}
+		array[i].ptr    = 2147483647 ; // max number can store in 32 bit
+
+	}	
 	/*get one node from every list to the array
 	 ** insert this node in its correct place in order in the array
 	 */
@@ -363,7 +370,7 @@ void bprint()
 		if(p != NULL){  // if there exist a node in the list with that number (counters[i])
 			k = 0 ; 
 			numOfItems++ ;			
-			while(k < numOfItems && ((long long)p->ptr) > ((long long)array[k].ptr ))
+			while(k < numOfItems && ((int)p->ptr) > ((int)array[k].ptr ))
 			 k++ ;
 			if(k < numOfItems ){
 				for( j = numOfItems ; j >= k  ; j--){ // shift the elements in the array to the right
@@ -381,14 +388,16 @@ void bprint()
 	/* Now the array contain node from every list 
 	 ** counters contain the order of the item in his parent list
 	*/
+	 printf("  Size Of Chunk   Status     Relative Address\n");
+	 printf("---------------------------------------------\n");
 	while(numOfItems > 0 ){
 
-		printf("out : %2d %2d %lld\n", array[0].size , array[0].status , array[0].ptr); // printing the minimum address in the array
+		printf("%10d       %-8s    %10d\n", powOfTwo(array[0].size), array[0].status == 1 || array[0].status == 0 ? "  FREE" : "ALOCATED" ,array[0].ptr); // printing the minimum address in the array
 		counters[array[0].size - 7] = counters[array[0].size - 7] + 1;
 		p  = (struct node* )data((int)array[0].size - 7  , (int)counters[array[0].size - 7] ); // get new node from the same list 		
 		if(p != NULL ){
 			k = 1; 
-			while( k < numOfItems && ((long long)p->ptr) > ((long long)array[k].ptr)){  
+			while( k < numOfItems && ((int)p->ptr) > ((int)array[k].ptr)){  
 				array[k-1].ptr = array[k].ptr ;        // shift the elements in the array to the left for insertion
 				array[k-1].size = array[k].size ;
 				array[k-1].status = array[k].status ;
@@ -413,7 +422,7 @@ void bprint()
 			printf("%d %d %lld\n", p->size, p->status, p->ptr);
 			p = p->next ;
 		}		
-	}*/	
+	}	*/
 	return;
 }
 
